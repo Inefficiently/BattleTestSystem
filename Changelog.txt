@@ -1,0 +1,5 @@
+----------------------------------------------------
+Version 0.0.1 12/16/2018
+Minimal Implementation of Connections and basic game
+functionality more to be added later
+----------------------------------------------------

@@ -1,0 +1,192 @@
+#######################################################
+
+        R U N I C   S P E L L   L A N G U A G E        
+        				V - 1 . 0
+        		D O C U M E N T A T I O N
+        	 BY : I N N E F F I C I E N T L Y
+
+#######################################################
+
+This language is meant to create spells that can act 
+dynamically. This is based off of the programming
+language used in Shenzhen I/O by Zachtronics
+
+To add your own custom spells to you library. Place a
+text file with your desired spell name "bin/res/Spells"
+directory. It will be added to the Directory and can
+be casted in a game you host if there are no compiler
+Errors. It is recommended that you use the Spell test
+program to ensure there are no issue with your spell
+
+                        MISC
+                        
+*******************************************************
+
+All numbers are INTEGERS from -999 to 999
+
+Spell execution occurs in cycles. In between the 
+Players turn and the Hosts turn.
+
+Spells caught in a 1 tile range of a spell that has
+been activated will be destroyed.
+
+Spells that occupy the same position will mutually
+annihilate each other
+
+Spells that occupy the same position as the player
+will be destroyed
+
+Conditional statements will run code that starts with
+either a + if the condition was true or - if it was
+false.
+
+Runic DOES NOT support comments yet. This feature will
+be added soon.
+
+*******************************************************
+
+All spells have 4 Read and Write memory areas called
+Registers
+
+                     REGISTERS
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+- DAT : This is the register in which all arithmetic
+will be performed.
+
+- ADV : This is the register in which movement will be
+read from. After being set the spell will move and
+this register will be reset.
+
+- ACT : This is the register that will act as the
+trigger to activate the spell pay load. any value 
+
+higher than 100 will cause the pay load to be 
+activated.
+
+- TAR : This is the register that will hold the target
+signature of your intended target. this value is set 
+upon initialization it can be changed but is not 
+recommended.
+ 
+///////////////////////////////////////////////////////
+
+All spells have 4 sensor Read Only Data parameters
+called Pins
+
+Sensor type must be defined by name on the second line
+of the spell text file
+
+There are 2 sensor types:
+
+SIMPLE - This will track only your target you chose in
+the initialization. This is meant for simple spells it
+will not provide the suggested direction to the target.
+
+ADVANCED - This will track the closest object to you
+not including yourself. This is meant for more advanced
+spells that intercept and defend the player.
+
+                       PINS
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+- DIS : This parameter gives the distance to the target
+this is rounded to the nearest integer.
+
+- DIR : This parameter gives the rough direction of the
+target.
+
+- SIG : This parameter gives the signature id of the
+target for comparison to the TAR register
+
+- RDR : This parameter gives an indication of how many
+objects are on the map.
+
+///////////////////////////////////////////////////////
+
+Pay load is the war head associated with the spell
+
+Pay load type must be defined by name on the first line
+of the spell text file
+
+There are currently 6 pay load types
+
+Name : Damage/Heal
+------------------
+DUD - Damage (0)
+BOMB - Damage (30)
+FIRE - Damage (10)
+ICE - Damage (10)
+KINETIC - Damage (10)
+HEAL - Heal (10)
+------------------
+
+Runic Spell Functions:
+
+Name - (Parameters) - Function Description
+
+All lines must have an end line character ";" to
+compile successfully
+
+                      FUNCTIONS
+                      
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+- MOV (2) - This function is used to set values of the
+the registers. the first parameter can be a literal, a
+pin or a register, the second parameter must be a
+register.
+
+- SLP (1) - This function is used to suspend execution
+of the spell by a designated number of cycles by the
+parameter which can be a literal, a pin or a register.
+this value is unsigned and as such can only be 0 - 999
+
+- RUN (0) - This function takes no parameters, it will
+set the DAT register to a random value (Temporary)
+from 1 to 8. (Will be changed to give the optimal path 
+to the target despite potential obstacles.)
+
+- ADD (1) - This function will add the value of the
+parameter to the DAT register. the parameter can be
+a literal, a pin or a register.
+
+- SUB (1) - This function will subtract the value of 
+the parameter to the DAT register. the parameter can 
+be a literal, a pin or a register.
+
+- MUL (1) - This function will multiply the value of 
+the parameter to the DAT register. the parameter can 
+be a literal, a pin or a register.
+
+- DIV (1) - This function will divide the value of 
+the parameter to the DAT register. the parameter can 
+be a literal, a pin or a register. (Don't try it
+I have the high ground.)
+
+- MOD (1) - This function will modulo the value of 
+the parameter to the DAT register. the parameter can 
+be a literal, a pin or a register. (Don't try it
+I have the high ground.)
+
+- TEQ (2) - This function will test if the value of
+its parameters are equal to each other. This will
+destroy the current value of the DAT register.
+
+- TGT (2) - This function will test if the value of
+the first parameter is greater than the second. This 
+will destroy the current value of the DAT register.
+
+- TLT (2) - This function will test if the value of
+the first parameter is less than the second. This 
+will destroy the current value of the DAT register.
+
+- LBL (1) - This function labels a part in the code
+to jump to. The parameter must be a literal.
+
+- JMP (1) - This function jumps to a specified label
+in the code. The parameter must be a literal.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

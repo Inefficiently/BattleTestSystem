@@ -1,6 +1,8 @@
 package com.Inefficiently.startup;
 
 import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -8,10 +10,11 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
-import com.Inefficiently.clients.Host;
-import com.Inefficiently.clients.Observer;
-import com.Inefficiently.clients.Player;
+import com.Inefficiently.clients.HostClient;
+import com.Inefficiently.clients.ObserverClient;
+import com.Inefficiently.clients.PlayerClient;
 import com.Inefficiently.engine.BattleEngine;
+import com.Inefficiently.engine.EngineUtils;
 
 /**
  * 
@@ -24,8 +27,20 @@ import com.Inefficiently.engine.BattleEngine;
  * V - 0.0.1 - 12/17/2018
  * V - 0.0.1 - 12/18/2018
  * V - 0.0.1 - 12/19/2018
- * V - 0.0.1 - 12/22/2018
- * 
+ * V - 0.0.1 - 12/22/2018 # First Release
+ * V - 0.1.0 - 01/17/2019
+ * V - 0.1.0 - 01/18/2019
+ * V - 0.1.0 - 01/19/2019
+ * V - 0.1.0 - 01/20/2019
+ * V - 0.1.0 - 01/24/2019
+ * V - 0.1.0 - 01/28/2019
+ * V - 0.1.0 - 01/29/2019
+ * V - 0.1.0 - 02/03/2019
+ * V - 0.1.0 - 02/04/2019
+ * V - 0.1.0 - 02/05/2019
+ * V - 0.1.0 - 02/06/2019
+ * V - 0.1.0 - 02/09/2019
+ * V - 0.1.0 - 02/10/2019
  * 
  * This a command line test of a battle system with multi-player
  * and single player modes
@@ -36,13 +51,15 @@ import com.Inefficiently.engine.BattleEngine;
 
 // This Class is the Starter thread for the game setting up host and client connections
 public class Execute {
-	public String Version = "0.0.1";
+	public String Version = "0.1.0";
 	
 	// Variable Initialization
 	
 	ServerSocket SSocket;
 	Socket CSocket;
-	public final int port = 19982;
+	Socket KSocket;
+	public final int ServerPort = 19982;
+	public final int KillPort = ServerPort + 1;
 	
 	private InetAddress LocalIP;
 	public String LocalIPAddress;
@@ -55,31 +72,25 @@ public class Execute {
 	
 	public Execute() {
 		scan = new InputHandler(new Scanner(System.in));
-		engine = new BattleEngine(10);
+		engine = new BattleEngine();
 	}
 	
 	// Give starting users a description of the game and rules
-	// Provide more information as a sort of Wiki
 	public void InfoDump() {
 		// TODO Change to read a prepared text file
-		System.out.println("------------------------------------------------------------------------------------------");
-		System.out.println("This game is an experimental test bed of battling mechanics");
-		System.out.println("for a game I am working on. This is Version " + Version + " and is in early development");
-		System.out.println("I would very much appreciate feedback and bug reports, if you have any please send them to");
-		System.out.println("ineffeciently.github@gmail.com and I will try to respond as quickly as I can");
-		System.out.println("------------------------------------------------------------------------------------------");
-		System.out.println("\nThis game is a turn-based strategy game in which your player is attempting to defeat an");
-		/* Not yet implemented so it will be cut out
-		System.out.println("enemy. There are player classes such as Mages, Knights, and Assasins (more may be added)");
-		System.out.println("Every Class has strengths and weaknesses which will be presented on request");
-		System.out.println("There are Attacks that are limited in Range depending on your class and its level");
-		System.out.println("There are traps that can be placed in order to trap and restrict the movement of opponents");
-		System.out.println("Each class has a unique movement possibilities that are intrinsic to the player class");
-		*/
-		System.out.println("enemy. You have 4 moves to choose from for now. A healing water spell, rock throw,");
-		System.out.println("weak gust attack, and an magic explosion. Sorry for the lack of depth I wanted to have a");
-		System.out.println("working multiplayer game to have something to show. There will hopefully be more added in the");
-		System.out.println("next update. Enjoy the Game!");
+		File InfoDumpText = EngineUtils.getFileFromResource("InfoDump.txt");
+		try {
+			Scanner scan = new Scanner(InfoDumpText);
+			while (scan.hasNextLine()) {
+				String line = scan.nextLine();
+				line = EngineUtils.DynamicTextFinder(line, "<Version>", Version);
+				System.out.println(line);
+			}
+			scan.close();
+		} catch (FileNotFoundException e) {
+			System.out.println("Your Information file is missing. Please reinstall to fix this issue");
+		}
+		
 	}
 	
 	// Run the game
@@ -106,8 +117,8 @@ public class Execute {
 		// Display usable IP
 		SetLocalIPAddress();
 		System.out.println("\nYour local Ip is " + LocalIPAddress);
-		System.out.println("I am currently unable to automatically find your \'external\' Ip, however if you know it, you can use it (Google what is my ip)");
-		System.out.println("You will also have to port forward port " + port + " in your router settings to let the game through your fire wall");
+		System.out.println("I am currently unable to automatically find your \'external\' Ip and automatically portforward, however if you know it, you can use it (Google what is my ip)");
+		System.out.println("You will also have to port forward ports " + ServerPort + " and " + KillPort + " in your router settings to let the game through your fire wall");
 		System.out.println("Please make sure your opponent knows the Ip you are using as the host to connect and start the battle");
 		// Set up Server Socket
 		Server = new Serve(this, SSocket);
@@ -122,18 +133,19 @@ public class Execute {
 		while (!connected) {
 			String ip = scan.ScannerIp();
 			try {
-				CSocket = new Socket(ip, port);
+				CSocket = new Socket(ip, ServerPort);
+				KSocket = new Socket(ip, KillPort);
 				connected = true;
-				DataInputStream tempFromServer = new DataInputStream(CSocket.getInputStream());
-				String type = tempFromServer.readUTF();
+				String type = new DataInputStream(CSocket.getInputStream()).readUTF();
 				System.out.println("You have joined as the type " + type);
 				// temporary data stream to read what type of client is being used
 				if(type.equals(CLIENTTYPE.PLAYER.getTYPENAME())) {
-					Player thread = new Player(scan, CSocket);
+					PlayerClient thread = new PlayerClient(scan, CSocket, KSocket);
 					thread.start();
 				} else {
 					// Assume anything that isn't player to be an observer
-					ObserverMode();
+					ObserverClient thread = new ObserverClient(CSocket);
+					thread.start();
 				}
 			} catch (UnknownHostException e) {
 				System.out.println("\nUnable to find a server with the IP:" + ip);
@@ -147,13 +159,13 @@ public class Execute {
 	// Run a special Client that accepts the server socket
 	public void ServerPlayerMode() {
 		try {
-			CSocket = new Socket(LocalIPAddress, port);
-			DataInputStream tempFromServer = new DataInputStream(CSocket.getInputStream());
-			String type = tempFromServer.readUTF();
+			CSocket = new Socket(LocalIPAddress, ServerPort);
+			KSocket = new Socket(LocalIPAddress, KillPort);
+			// temporary data stream to read what type of client is being used then left to for GC
+			String type = new DataInputStream(CSocket.getInputStream()).readUTF();
 			System.out.println("You have joined as the type " + type + "\n");
-			// temporary data stream to read what type of client is being used
-			Host Player = new Host(scan, CSocket);
-			Player.start();
+			HostClient thread = new HostClient(scan, CSocket, KSocket);
+			thread.start();
 		} catch (UnknownHostException e) {
 			System.out.println("\nUnable to find a server with the IP:" + LocalIPAddress);
 		} catch (IOException e) {
@@ -161,12 +173,8 @@ public class Execute {
 			System.out.println();
 		} 
 	}
-	// Possible Observer mode view Battle progress only
-	public void ObserverMode() {
-		Observer thread = new Observer(CSocket);
-		thread.start();
-	}
 	
+	// Finds local ip address for use later on
 	public void SetLocalIPAddress() {
 		try {
 			LocalIP = InetAddress.getLocalHost();

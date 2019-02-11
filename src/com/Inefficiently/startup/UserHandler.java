@@ -6,34 +6,38 @@ import java.io.IOException;
 import java.net.Socket;
 
 import com.Inefficiently.engine.BattleEngine;
+import com.Inefficiently.engine.Player;
 import com.Inefficiently.startup.Execute.CLIENTTYPE;
 
 // Manages Client Input and Output for the Server
 public class UserHandler extends Thread {
-	
+
 	Execute exec;
 	InputHandler scan;
 	BattleEngine engine;
-	
+
 	Socket Client;
-	
+
 	DataInputStream FromClient;
 	DataOutputStream ToClient;
-	
+
 	CLIENTTYPE TYPE;
-	
+
 	// Current turn data from engine and previously recorded data
 	boolean turnDelta = true;
 	boolean recordedTurn = true;
-	
-	// status update boolean
+
+	// status update booleans
 	boolean running = true;
 	boolean gameover = false;
 	boolean hasInput = false;
 	boolean isPlayersTurn = false;
-	
-	// Passes Execute for Input methods, Socket for Communication
-	public UserHandler(Execute exec, Socket connection, CLIENTTYPE TYPE) {
+
+	// Player object from battle engine
+	Player User;
+
+	// Passes Execute for Input methods, Socket for Communication, ClientType for identification
+	public UserHandler(Execute exec, Socket connection, Socket KillSwitch, CLIENTTYPE TYPE) {
 		this.exec = exec;
 		this.scan = exec.scan;
 		this.engine = exec.engine;
@@ -45,15 +49,24 @@ public class UserHandler extends Thread {
 			ToClient = new DataOutputStream(Client.getOutputStream());
 			// Send Client Type to Client as a notification to know what client type to run
 			ToClient.writeUTF(TYPE.getTYPENAME());
+			if (TYPE != CLIENTTYPE.OBSERVER) {
+				ToClient.writeUTF(engine.GetSpellOptionsCSV());
+			}
 			ToClient.writeUTF(engine.OutputData());
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.out.println("\nError getting the data streams created. Possible loss in connection");
 		}
+		if(TYPE == CLIENTTYPE.HOST) {
+			engine.AddHostKSocket(KillSwitch);
+		} else if(TYPE == CLIENTTYPE.PLAYER) {
+			engine.AddPlayerKSocket(KillSwitch);
+		}
 	}
-	
+
 	@Override
 	public void run() {
+		getPlayer();
 		try {
 			if(TYPE.getTYPENAME().equals(CLIENTTYPE.HOST.getTYPENAME())) {
 				engine.HostConnected = true;
@@ -67,17 +80,15 @@ public class UserHandler extends Thread {
 				ObserverIO();
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			System.out.println("Handler error");
 		}
 	}
-	
+
 	// Main run for player thread
 	public void PlayerIO() {
-		// TODO Actually Implement
 		boolean PLAYERTURN = false;
-		while(running && !engine.gameOver) {
+		while(running && !engine.gameOver && !interrupted()) {
 			if (engine.begin) {
 				hasInput = false;
 				try {
@@ -87,23 +98,25 @@ public class UserHandler extends Thread {
 					// Exit the loop if game over
 					if(engine.gameOver)
 						break;
-					turnDelta = engine.getPlayerTurn();
+					turnDelta = engine.getActiveTurn();
 					isPlayersTurn = turnDelta == PLAYERTURN;
 					if (turnDelta != recordedTurn) {
 						// Set hasInput flag
 						hasInput = true;
 						recordedTurn = turnDelta;
 					}
-
 					ToClient.writeBoolean(hasInput);
 					ToClient.writeBoolean(isPlayersTurn);
 					// write the results of opponents turns
 					if (hasInput) {
 						ToClient.writeUTF(engine.OutputData());
 					} else if (isPlayersTurn) {
-						String data = FromClient.readUTF();
-						engine.HandlePlayerCommand(data);
+						engine.HandlePlayerCommand(getValidMove());
+						// After player finishes his turn the spells will cycle
+						engine.RunSpellCycles();
 						engine.EndTurn();
+						// TODO fix to be single turn system
+						engine.GameOverCheck();
 						ToClient.writeBoolean(engine.gameOver);
 						if(engine.gameOver)
 							break;
@@ -112,8 +125,11 @@ public class UserHandler extends Thread {
 						yield();
 					}
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
+					// Push Kill signal
 					e.printStackTrace();
+					System.out.println("Socket is dead. Triggering kill switch");
+					engine.KillSwitchHost();
+					interrupt();
 				} 
 			} else {
 				yield();
@@ -132,7 +148,6 @@ public class UserHandler extends Thread {
 	}
 	// Main run for Observer thread
 	public void ObserverIO() {
-		// TODO Actually Implement
 		while(running && !gameover) {
 			if (engine.begin) {
 				try {
@@ -141,7 +156,7 @@ public class UserHandler extends Thread {
 					// Exit the loop if game over
 					if(engine.gameOver)
 						break;
-					turnDelta = engine.getPlayerTurn();
+					turnDelta = engine.getActiveTurn();
 					ToClient.writeBoolean(turnDelta != recordedTurn);
 					if (turnDelta != recordedTurn) {
 						ToClient.writeUTF(engine.OutputData());
@@ -170,9 +185,8 @@ public class UserHandler extends Thread {
 	}
 	// Main run for the host thread
 	public void HostIO() {
-		// TODO Actually Implement
 		boolean PLAYERTURN = true;
-		while(running && !engine.gameOver) {
+		while(running && !engine.gameOver && !interrupted()) {
 			if (engine.begin) {
 				hasInput = false;
 				try {
@@ -181,23 +195,22 @@ public class UserHandler extends Thread {
 					// Exit the loop if game over
 					if(engine.gameOver)
 						break;
-					turnDelta = engine.getPlayerTurn();
+					turnDelta = engine.getActiveTurn();
 					isPlayersTurn = turnDelta == PLAYERTURN;
 					if (turnDelta != recordedTurn) {
 						// Set hasInput flag
 						hasInput = true;
-						
+
 						recordedTurn = turnDelta;
 					}
 					ToClient.writeBoolean(hasInput);
 					ToClient.writeBoolean(isPlayersTurn);
-					
+
 					// write the results of opponents turns
 					if (hasInput) {
 						ToClient.writeUTF(engine.OutputData());
 					} else if (isPlayersTurn) {
-						String data = FromClient.readUTF();
-						engine.HandlePlayerCommand(data);
+						engine.HandlePlayerCommand(getValidMove());
 						engine.EndTurn();
 						ToClient.writeBoolean(engine.gameOver);
 						if(engine.gameOver)
@@ -206,15 +219,20 @@ public class UserHandler extends Thread {
 					} else {
 						yield();
 					}
-
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
+					// Push kill signal to other user handler
 					e.printStackTrace();
+					System.out.println("Socket is dead. triggering all kill switches");
+					engine.KillSwitchHost();
+					engine.KillSwitchPlayer();
+					interrupt();
 				} 
 			} else {
 				yield();
 			}
 		}
+		
 		if(engine.gameOver) {
 			try {
 				ToClient.writeUTF(engine.getGameOverMessage(TYPE));
@@ -226,5 +244,33 @@ public class UserHandler extends Thread {
 				e.printStackTrace();
 			}
 		}
+	}
+	public void getPlayer() {
+		if(TYPE == CLIENTTYPE.HOST) {
+			User = engine.Players[0];
+		} else if(TYPE == CLIENTTYPE.PLAYER) {
+			User = engine.Players[1];
+		}
+	}
+	// Command will be (Spell, Move) (Direction) [(spell directory ID) (target)] 
+	public String getValidMove() {
+		boolean isValidMove = false;
+		String Command = "";
+		while(!isValidMove) {
+			try {
+				Command = FromClient.readUTF();
+				String[] parts = Command.split(" ");
+				int move = Integer.parseInt(parts[1]);
+				isValidMove = engine.ValidPosition(move, User.Iindex, User.Jindex);
+				ToClient.writeBoolean(isValidMove);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NumberFormatException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		}
+		return Command;
 	}
 }

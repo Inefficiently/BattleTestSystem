@@ -1,5 +1,21 @@
 ----------------------------------------------------
-Version 0.0.1 12/16/2018
+Version 0.0.1 - 12/16/2018
 Minimal Implementation of Connections and basic game
 functionality more to be added later
 ----------------------------------------------------
+Version 0.1.0 - 02/10/2019
+-Added a Map to the game for movement and 2d spell movement
+-Added the "Runic" Spell language (V - 1.0) to create more
+advanced spells. 
+-Added a client side menu with more options
+to chose from. 
+-Added auto termination to the program when stuck
+in input menu and another player unexpectedly terminated
+the program. This should inform you almost instantly that
+the game is over.
+-Added Bare bones preferences file for hosting servers
+more to be added later as more functionality is implemented
+-Added a simple testing area for custom spell creation along with
+a Runic Language Documentation of available functions. If you
+are interested in creating your own spells please read the text
+document with instructions

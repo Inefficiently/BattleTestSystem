@@ -1,0 +1,12 @@
+------------------------------------------------------------------------------------------
+This game is an experimental test bed of battling mechanics
+for a game I am working on. This is Version <Version> and is in early development
+I would very much appreciate feedback and bug reports, if you have any please send them to
+ineffeciently.github@gmail.com and I will try to respond as quickly as I can
+------------------------------------------------------------------------------------------
+
+This game is a turn-based strategy game in which your player is attempting to defeat an
+enemy. You have 4 moves to choose from for now. A healing water spell, rock throw,
+weak gust attack, and an magic explosion. Sorry for the lack of depth I wanted to have a
+working multiplayer game to have something to show. There will hopefully be more added in the
+next update. Enjoy the Game!

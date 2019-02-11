@@ -105,7 +105,6 @@ public class InputHandler {
 					}
 				}
 				if(error) {
-					
 					System.out.println("\nThe Ip you entered is not valid. Be sure to check every number is correct");
 				} else {
 					return in;

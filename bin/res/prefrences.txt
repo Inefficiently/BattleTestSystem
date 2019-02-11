@@ -1,0 +1,2 @@
+Max-Health:100
+Map-Size:5

@@ -9,13 +9,18 @@ import com.Inefficiently.startup.Execute.CLIENTTYPE;
 public class Serve extends Thread {
 	Execute exec;
 	ServerSocket SSocket;
+	ServerSocket KSocket;
+	
 	public Serve(Execute exec, ServerSocket SSocket) {
 		this.exec = exec;
 		try {
-			this.SSocket = new ServerSocket(exec.port);
+			this.SSocket = new ServerSocket(exec.ServerPort);
+			this.KSocket = new ServerSocket(exec.KillPort);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			System.out.println("A server is already running. Only one instance of the server is allowed");
+			System.exit(0);
 		}
 		System.out.println("Server is set up and will begin serving clients");
 	}
@@ -25,14 +30,13 @@ public class Serve extends Thread {
 		try {
 			// Generate a temporary socket and Client type to pass to the UserHandler thread
 			// Create Host Player
-			
 			CLIENTTYPE TempType = CLIENTTYPE.HOST;
-			new UserHandler(exec, SSocket.accept(), TempType).start();
+			new UserHandler(exec, SSocket.accept(), KSocket.accept(), TempType).start();
 			// Change temp to make one Player and N observers
 			TempType = CLIENTTYPE.PLAYER;
 			//System.out.println("Waiting for connections");
 			while(true) {
-				new UserHandler(exec, SSocket.accept(), TempType).start();
+				new UserHandler(exec, SSocket.accept(), KSocket.accept(), TempType).start();
 				//System.out.println("New Connection found!\nThey will be a " + TempType.getTYPENAME());
 				//Ensures that after the first loop all other connections are observers
 				TempType = CLIENTTYPE.OBSERVER;

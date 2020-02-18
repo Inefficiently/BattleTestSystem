@@ -1,1 +1,6 @@
-Example.txt
+Bomb Suprise.txt
+Fire Missile.txt
+Ice Ball.txt
+Kinetic Pulse.txt
+Minor Heal.txt
+Spell Interceptor.txt
